@@ -10,7 +10,6 @@ networks:
     metrics:
 
 volumes:
-    activemq-data: {}
     drupal-private-files: {}
     drupal-public-files: {}
     drupal-root: {}
@@ -60,10 +59,10 @@ services:
         <<: [*common]
         image: ${SITE_DOCKER_REGISTRY}/drupal:${LIBOPS_PHP_FPM_TAG}
         ports:
-            - "8080:80"
-        environment:
+            - "80:80"
+        environment: &drupal-environment
             DEVELOPMENT_ENVIRONMENT: false
-            DRUPAL_DEFAULT_BROKER_URL: "tcp://parry:61613"
+            GOOGLE_PROJECT_ID: ${LIBOPS_GCLOUD_PROJECT_ID}
             DRUPAL_DEFAULT_CANTALOUPE_URL: "${LIBOPS_IIIF_URL}"
             DRUPAL_DEFAULT_CONFIGDIR: "/var/www/drupal/config/sync"
             DRUPAL_DEFAULT_INSTALL_EXISTING_CONFIG: "true"
@@ -71,17 +70,12 @@ services:
             DRUPAL_DEFAULT_PROFILE: "minimal"
             DRUPAL_DEFAULT_SITE_URL: "${DOMAIN}"
             DRUPAL_DEFAULT_SOLR_CORE: "default"
-            DRUPAL_DRUSH_URI: "https://${DOMAIN}"
+            DRUPAL_DRUSH_URI: "http://${DOMAIN}"
+            DRUPAL_ENABLE_HTTPS: false
             PHP_POST_MAX_SIZE: "4G"
             PHP_UPLOAD_MAX_FILESIZE: "4G"
             PHP_MEMORY_LIMIT: "4G"
             SOLR_HOCR_PLUGIN_PATH: ${SOLR_HOCR_PLUGIN_PATH}
-            DB_MYSQL_HOST: "mariadb"
-            DB_MYSQL_PORT: "3306"
-            DRUPAL_DEFAULT_DB_NAME: "drupal_default"
-            DRUPAL_DEFAULT_DB_USER: "drupal_default"
-            DRUPAL_DEFAULT_SOLR_HOST: "solr"
-            DRUPAL_DEFAULT_SOLR_PORT: 8983
         secrets:
             - source: DB_ROOT_PASSWORD
             - source: DRUPAL_DEFAULT_ACCOUNT_PASSWORD
@@ -131,8 +125,10 @@ services:
     cadvisor:
         image: gcr.io/cadvisor/cadvisor:v0.49.1
         command:
-            - --disable_metrics="advtcp,cpu_topology,referenced_memory,disk,memory_numa,perf_event,sched,tcp,udp"
-            - --store_container_labels=false
+            - -disable_metrics
+            - cpu_topology,referenced_memory,disk,memory_numa,perf_event,sched,tcp,udp
+            - -store_container_labels
+            - "false"
         privileged: true
         devices:
             - /dev/kmsg
@@ -153,6 +149,8 @@ services:
             LIBOPS_GCLOUD_PROJECT_ID: "${LIBOPS_GCLOUD_PROJECT_ID}"
             LIBOPS_ZONE: ${LIBOPS_ZONE}"
             CADVISOR_HOST: "cadvisor:8080"
+        depends_on:
+            - cadvisor
     parry:
         <<: [*common]
         image: ${LIBOPS_DOCKER_REGISTRY}/parry:main
@@ -218,15 +216,13 @@ services:
             - ./secrets/etc/ssh/ssh_host_ed25519_key:/etc/ssh/ssh_host_ed25519_key:ro
             - ./secrets/etc/ssh/ssh_host_ed25519_key.pub:/etc/ssh/ssh_host_ed25519_key.pub:ro
         environment:
-            LIBOPS_DATABASE: drupal
-            LIBOPS_DATABASE_USERNAME: "${LIBOPS_ENVIRONMENT}"
-            LIBOPS_DATABASE_PASSWORD: "${LIBOPS_DATABASE_PASSWORD}"
-            LIBOPS_DATABASE_HOST: mariadb
-            LIBOPS_ENVIRONMENT: "${LIBOPS_ENVIRONMENT}"
-            LIBOPS_GCLOUD_PROJECT_ID: "${LIBOPS_GCLOUD_PROJECT_ID}"
-            LIBOPS_HASH_SALT: "${LIBOPS_HASH_SALT}"
-            LIBOPS_IIIF_URL: "${LIBOPS_IIIF_URL}"
-            CLOUD_RUN_URL: "${LIBOPS_DRUPAL_CR_URL}"
+            <<: [*drupal-environment]
+        secrets:
+            - source: DB_ROOT_PASSWORD
+            - source: DRUPAL_DEFAULT_ACCOUNT_PASSWORD
+            - source: DRUPAL_DEFAULT_DB_PASSWORD
+            - source: DRUPAL_DEFAULT_SALT
+            - source: JWT_PRIVATE_KEY
         depends_on:
             - init
             - drupal
