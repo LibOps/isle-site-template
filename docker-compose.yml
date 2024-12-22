@@ -106,6 +106,12 @@ services:
               read_only: false
             -  drupal-solr-config:/opt/solr/server/solr/default:z,rw
             - ./tmp/nginx:/var/lib/nginx/tmp:rw
+        healthcheck:
+            test: curl -s http://localhost/status | grep -q pool
+            interval: 15s
+            timeout: 3s
+            retries: 5
+            start_period: 10s
         depends_on:
           - mariadb
           - parry
