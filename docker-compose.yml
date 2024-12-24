@@ -63,6 +63,7 @@ services:
         environment: &drupal-environment
             DEVELOPMENT_ENVIRONMENT: false
             GOOGLE_PROJECT_ID: ${LIBOPS_GCLOUD_PROJECT_ID}
+            LIBOPS_ENVIRONMENT: ${LIBOPS_ENVIRONMENT}
             DRUPAL_DEFAULT_CANTALOUPE_URL: "${LIBOPS_IIIF_URL}"
             DRUPAL_DEFAULT_CONFIGDIR: "/var/www/drupal/config/sync"
             DRUPAL_DEFAULT_INSTALL_EXISTING_CONFIG: "true"
