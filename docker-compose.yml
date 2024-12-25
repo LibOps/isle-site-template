@@ -184,6 +184,7 @@ services:
             - /mnt/disks/data/docker:/docker-data
             - /etc/systemd/system:/etc/systemd/system:ro
             - /home/lnmp:/home/lnmp
+            - /usr/bin/docker-credential-gcr:/usr/bin/docker-credential-gcr
             - <<: [*drupal-tmp]
               volume:
                   nocopy: true
