@@ -44,6 +44,9 @@ services:
             - ./docker-compose.yml:/run/docker-compose.yml
             - ./generate-secrets.sh:/run/generate-secrets.sh
             - ./secrets:/run/secrets
+        deploy:
+            restart_policy:
+                condition: none
     mariadb:
         <<: [*common]
         image: ${ISLANDORA_REPOSITORY}/mariadb:${ISLANDORA_TAG}
@@ -64,7 +67,7 @@ services:
             DEVELOPMENT_ENVIRONMENT: false
             GOOGLE_PROJECT_ID: ${LIBOPS_GCLOUD_PROJECT_ID}
             LIBOPS_ENVIRONMENT: ${LIBOPS_ENVIRONMENT}
-            DRUPAL_DEFAULT_CANTALOUPE_URL: "${LIBOPS_IIIF_URL}"
+            DRUPAL_DEFAULT_IIIF_URL: "${LIBOPS_IIIF_URL}"
             DRUPAL_DEFAULT_CONFIGDIR: "/var/www/drupal/config/sync"
             DRUPAL_DEFAULT_INSTALL_EXISTING_CONFIG: "true"
             DRUPAL_DEFAULT_NAME: "Islandora Digital Collections"
@@ -127,8 +130,12 @@ services:
               read_only: false
               volume:
                   nocopy: true
-        depends_on:
-            - drupal
+        healthcheck:
+            test: curl -s http://localhost:8983/solr/default/admin/ping?wt=json | jq -r .status | grep OK
+            interval: 15s
+            timeout: 3s
+            retries: 5
+            start_period: 10s
     cadvisor:
         image: gcr.io/cadvisor/cadvisor:v0.49.1
         command:
@@ -145,7 +152,7 @@ services:
             - /:/rootfs:ro
             - /var/run:/var/run:ro
             - /sys:/sys:ro
-            - /var/lib/docker/:/var/lib/docker:ro
+            - /mnt/disks/data/docker/:/var/lib/docker:ro
             - /dev/disk/:/dev/disk:ro
     cap:
         image: ${LIBOPS_DOCKER_REGISTRY}/cap:main
@@ -232,4 +239,3 @@ services:
             - source: JWT_PRIVATE_KEY
         depends_on:
             - init
-            - drupal
